@@ -1,3 +1,8 @@
+function updatePlayer({x, y}) {
+  window.socket.send([x, y]);
+}
+
+
 function setWorld(worldState) {
     function makeTile(type) {
         return [
@@ -152,6 +157,21 @@ function setWorld(worldState) {
             isInDialogue: false
         },
     ])
+  
+
+function handleMessage(message) {
+  if(!message) return false;
+  if(message.split(':')[0] === 'position') {
+    const [x, y] = message.split(':')[1].split(',');
+    player.moveTo(parseInt(x, 10), parseInt(y, 10));
+  }
+  console.log('handled!', player.pos)
+  return true;
+}
+
+window.setupHandler((event) => {
+  handleMessage(event.data);
+})
 
     let tick = 0
     onUpdate(() => {
@@ -175,12 +195,14 @@ function setWorld(worldState) {
         if (player.isInDialogue) return
         setSprite(player, 'player-down')
         player.move(0, player.speed)
+        updatePlayer(player.pos);
     })
 
     onKeyDown('up', () => {
         if (player.isInDialogue) return
         setSprite(player, 'player-up')
         player.move(0, -player.speed)
+      updatePlayer(player.pos);
     })
 
     onKeyDown('left', () => {
@@ -191,6 +213,7 @@ function setWorld(worldState) {
             player.play('walk')
         }
         player.move(-player.speed, 0)
+      updatePlayer(player.pos);
 
     })
 
@@ -202,6 +225,7 @@ function setWorld(worldState) {
             player.play('walk')
         }
         player.move(player.speed, 0)
+      updatePlayer(player.pos);
     })
 
 
