@@ -2,6 +2,8 @@ function updatePlayer({x, y}) {
   window.socket.send([x, y]);
 }
 
+let clientId = '';
+
 
 function setWorld(worldState) {
     function makeTile(type) {
@@ -158,15 +160,69 @@ function setWorld(worldState) {
         },
     ])
   
+  const otherPlayers = {};
+  
 
 function handleMessage(message) {
   if(!message) return false;
-  if(message.split(':')[0] === 'position') {
-    const [x, y] = message.split(':')[1].split(',');
-    player.moveTo(parseInt(x, 10), parseInt(y, 10));
+  
+  // Handle the ID message
+  if(message.split(':')[0] === 'id') {
+    clientId = message.split(':')[1];
+    return true;
   }
-  console.log('handled!', player.pos)
-  return true;
+  
+  // Handle movement of other players
+  if(message.split(':')[0] !== clientId && message.split(':')[1] === 'position') {
+    const id = message.split(':')[0];
+    const [x, y] = message.split(':')[2].split(',');
+    otherPlayers[id].moveTo(parseFloat(x), parseFloat(y));
+    console.log('moving other player', clientId, id);
+    
+    return true;
+  }
+
+  // Handle moving our client
+  if(clientId && message.split(':')[0] === clientId && message.split(':')[1] === 'position') {
+    const [x, y] = message.split(':')[2].split(',');
+    player.moveTo(parseFloat(x), parseFloat(y));
+    console.log('player move!');
+    return true;
+  }
+  
+  // Handle connection of other players
+  if(message.split(':')[0] === 'connected') {
+    const id = message.split(':')[1];
+    if (id === clientId) return false;
+    otherPlayers[id] = add([
+      sprite('player-down'),
+      pos(500,700),
+      scale(4),
+      area(),
+      body(),
+      {
+        currentSprite: 'player-down',
+        speed: 300,
+        isInDialogue: false
+      },
+    ]);
+    
+    alert(`${id} has connected!`);
+    return true;
+  }
+  
+  // Handle disconnection of other players
+  if(message.split(':')[0] === 'disconnected') {
+    const id = message.split(':')[1];
+    destroy(otherPlayers[id]);
+    delete otherPlayers[id];
+    alert(`${id} has disconnected!`);
+    return true;
+  }
+
+  
+  console.log('not handled!')
+  return false;
 }
 
 window.setupHandler((event) => {
