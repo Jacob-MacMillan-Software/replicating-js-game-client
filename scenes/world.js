@@ -1,9 +1,9 @@
 function updatePlayer({x, y}) {
-  window.socket.send([x, y]);
+  window.socket.send(`position:${x},${y}`);
 }
 
 let clientId = '';
-
+let alreadyConnected = false;
 
 function setWorld(worldState) {
     function makeTile(type) {
@@ -161,6 +161,12 @@ function setWorld(worldState) {
     ])
   
   const otherPlayers = {};
+  if(alreadyConnected) {
+    // Ask server for the location of all other players
+    socket.send('getPlayer:all');
+  } else {
+    alreadyConnected = true;
+  }
   
 
 function handleMessage(message) {
@@ -193,7 +199,7 @@ function handleMessage(message) {
   // Handle connection of other players
   if(message.split(':')[0] === 'connected') {
     const id = message.split(':')[1];
-    if (id === clientId) return false;
+    if (id === clientId || otherPlayers[id]) return false;
     otherPlayers[id] = add([
       sprite('player-down'),
       pos(500,700),
@@ -207,7 +213,7 @@ function handleMessage(message) {
       },
     ]);
     
-    alert(`${id} has connected!`);
+    console.log(`${id} has connected!`);
     return true;
   }
   
@@ -216,7 +222,7 @@ function handleMessage(message) {
     const id = message.split(':')[1];
     destroy(otherPlayers[id]);
     delete otherPlayers[id];
-    alert(`${id} has disconnected!`);
+    console.log(`${id} has disconnected!`);
     return true;
   }
 
