@@ -1,4 +1,10 @@
-function updatePlayer({x, y}) {
+function updatePlayer({x, y}, walking) {
+  if (walking) {
+    window.socket.send(`moving:${walking}`);
+  } else {
+    window.socket.send(`moving:stopped`);
+  }
+  
   window.socket.send(`position:${x},${y}`);
 }
 
@@ -172,6 +178,8 @@ function setWorld(worldState) {
 function handleMessage(message) {
   if(!message) return false;
   
+  console.log(`Got message ${message}`);
+  
   // Handle the ID message
   if(message.split(':')[0] === 'id') {
     clientId = message.split(':')[1];
@@ -181,11 +189,17 @@ function handleMessage(message) {
   // Handle movement of other players
   if(message.split(':')[0] !== clientId && message.split(':')[1] === 'position') {
     const id = message.split(':')[0];
+    
+    if(otherPlayers[id].moving) {
+      return false;
+    }
+    
     let [x, y] = message.split(':')[2].split(',');
     
     x = parseFloat(x);
     y = parseFloat(y);
     
+    /*
     // figure out which sprite to use based on the direction
     if (x > otherPlayers[id].pos.x) {
       otherPlayers[id].flipX = true;
@@ -200,11 +214,55 @@ function handleMessage(message) {
     } else if (y < otherPlayers[id].pos.y) {
       setSprite(otherPlayers[id], 'player-up');
     }
+    */
     
     otherPlayers[id].moveTo(x, y);
     
-    // otherPlayers[id].stop();
     console.log('moving other player', clientId, id);
+    
+    return true;
+  }
+  
+  // Handle player movement, but while they're doing it (above is after they stopped moving)
+  if(message.split(':')[0] !== clientId && message.split(':')[1] === 'moving') {
+    const id = message.split(':')[0];
+    
+    
+    console.log('other player is moving', id, message.split(':')[2]);
+    
+    if (message.split(':')[2] === 'stopped') {
+      otherPlayers[id].stop();
+      otherPlayers[id].moving = false;
+      return true;
+    }
+
+    let [x, y] = message.split(':')[2].split(',');
+    
+    x = parseFloat(x);
+    y = parseFloat(y);
+    
+    // figure out which sprite to use based on the direction
+    if (x > 0) {
+      otherPlayers[id].flipX = true;
+      if(otherPlayers[id].curAnim() !== 'walk') {
+        setSprite(otherPlayers[id], 'player-side');
+        otherPlayers[id].play('walk');
+      }
+    } else if (x < 0) {
+      otherPlayers[id].flipX = false;
+      if(otherPlayers[id].curAnim() !== 'walk') {
+        setSprite(otherPlayers[id], 'player-side');
+        otherPlayers[id].play('walk');
+      }
+    } else if (y > 0) {
+      setSprite(otherPlayers[id], 'player-down');
+    } else if (y < 0) {
+      setSprite(otherPlayers[id], 'player-up');
+    }
+    
+    otherPlayers[id].move(x, y);
+    otherPlayers[id].moving = true;
+    
     
     return true;
   }
@@ -265,6 +323,13 @@ window.setupHandler((event) => {
         && !player.isInDialogue) {
             player.flipX = !player.flipX
         }
+      
+      // Animate the remote players
+      for(let id in otherPlayers) {
+        if(otherPlayers[id].moving && tick % 20 === 0) {
+          otherPlayers[id].flipX = !otherPlayers[id].flipX;
+        }
+      }
     })
 
     function setSprite(player, spriteName) {
@@ -278,14 +343,14 @@ window.setupHandler((event) => {
         if (player.isInDialogue) return
         setSprite(player, 'player-down')
         player.move(0, player.speed)
-        updatePlayer(player.pos);
+        updatePlayer(player.pos, `0,${player.speed}`)
     })
 
     onKeyDown('up', () => {
         if (player.isInDialogue) return
         setSprite(player, 'player-up')
         player.move(0, -player.speed)
-      updatePlayer(player.pos);
+      updatePlayer(player.pos, `0,-${player.speed}`)
     })
 
     onKeyDown('left', () => {
@@ -296,7 +361,7 @@ window.setupHandler((event) => {
             player.play('walk')
         }
         player.move(-player.speed, 0)
-      updatePlayer(player.pos);
+      updatePlayer(player.pos, `-${player.speed},0`)
 
     })
 
@@ -308,17 +373,28 @@ window.setupHandler((event) => {
             player.play('walk')
         }
         player.move(player.speed, 0)
-      updatePlayer(player.pos);
+      updatePlayer(player.pos, `${player.speed},0`)
     })
 
 
     onKeyRelease('left', () => {
         player.stop()
+      updatePlayer(player.pos)
     })
 
     onKeyRelease('right', () => {
         player.stop()
+      updatePlayer(player.pos)
     })
+
+    onKeyRelease('up', () => {
+      updatePlayer(player.pos)
+    })
+
+    onKeyRelease('down', () => {
+      updatePlayer(player.pos)
+    })
+
 
     if (!worldState) {
         worldState = {
@@ -386,8 +462,10 @@ window.setupHandler((event) => {
 
 
 
+/*
     onCollideWithPlayer('cat', player, worldState)
     onCollideWithPlayer('spider', player, worldState)
     onCollideWithPlayer('centipede', player, worldState)
     onCollideWithPlayer('grass', player, worldState)
+    */
 }
