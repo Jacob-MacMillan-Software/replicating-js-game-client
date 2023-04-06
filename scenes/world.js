@@ -181,8 +181,29 @@ function handleMessage(message) {
   // Handle movement of other players
   if(message.split(':')[0] !== clientId && message.split(':')[1] === 'position') {
     const id = message.split(':')[0];
-    const [x, y] = message.split(':')[2].split(',');
-    otherPlayers[id].moveTo(parseFloat(x), parseFloat(y));
+    let [x, y] = message.split(':')[2].split(',');
+    
+    x = parseFloat(x);
+    y = parseFloat(y);
+    
+    // figure out which sprite to use based on the direction
+    if (x > otherPlayers[id].pos.x) {
+      otherPlayers[id].flipX = true;
+      setSprite(otherPlayers[id], 'player-side');
+      otherPlayers[id].play('walk');
+    } else if (x < otherPlayers[id].pos.x) {
+      otherPlayers[id].flipX = false;
+      setSprite(otherPlayers[id], 'player-side');
+      otherPlayers[id].play('walk');
+    } else if (y > otherPlayers[id].pos.y) {
+      setSprite(otherPlayers[id], 'player-down');
+    } else if (y < otherPlayers[id].pos.y) {
+      setSprite(otherPlayers[id], 'player-up');
+    }
+    
+    otherPlayers[id].moveTo(x, y);
+    
+    // otherPlayers[id].stop();
     console.log('moving other player', clientId, id);
     
     return true;
