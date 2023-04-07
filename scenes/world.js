@@ -190,10 +190,6 @@ function handleMessage(message) {
   if(message.split(':')[0] !== clientId && message.split(':')[1] === 'position') {
     const id = message.split(':')[0];
     
-    if(otherPlayers[id].moving) {
-      return false;
-    }
-    
     let [x, y] = message.split(':')[2].split(',');
     
     x = parseFloat(x);
@@ -461,11 +457,8 @@ window.setupHandler((event) => {
     }
 
 
-
-/*
     onCollideWithPlayer('cat', player, worldState)
     onCollideWithPlayer('spider', player, worldState)
     onCollideWithPlayer('centipede', player, worldState)
     onCollideWithPlayer('grass', player, worldState)
-    */
 }
