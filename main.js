@@ -12,3 +12,5 @@ scene('world', (worldState) => setWorld(worldState))
 scene('battle', (worldState) => setBattle(worldState))  
 
 go('world')
+
+// vim: set tabstop=4 shiftwidth=4 expandtab:

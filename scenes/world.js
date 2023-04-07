@@ -1,11 +1,11 @@
 function updatePlayer({x, y}, walking) {
-  if (walking) {
-    window.socket.send(`moving:${walking}`);
-  } else {
-    window.socket.send(`moving:stopped`);
-  }
-  
-  window.socket.send(`position:${x},${y}`);
+    if (walking) {
+        window.socket.send(`moving:${walking}`);
+    } else {
+        window.socket.send(`moving:stopped`);
+    }
+
+    window.socket.send(`position:${x},${y}`);
 }
 
 let clientId = '';
@@ -121,8 +121,8 @@ function setWorld(worldState) {
                 ],
                 '3': () => [
                     area({
-                    shape: new Rect(vec2(0), 16, 20),
-                    offset: vec2(0, -4)
+                        shape: new Rect(vec2(0), 16, 20),
+                        offset: vec2(0, -4)
                     }),
                     body({isStatic: true})
                 ]
@@ -165,38 +165,38 @@ function setWorld(worldState) {
             isInDialogue: false
         },
     ])
-  
-  const otherPlayers = {};
-  if(alreadyConnected) {
-    // Ask server for the location of all other players
-    socket.send('getPlayer:all');
-  } else {
-    alreadyConnected = true;
-  }
-  
 
-function handleMessage(message) {
-  if(!message) return false;
-  
-  console.log(`Got message ${message}`);
-  
-  // Handle the ID message
-  if(message.split(':')[0] === 'id') {
-    clientId = message.split(':')[1];
-    return true;
-  }
-  
-  // Handle movement of other players
-  if(message.split(':')[0] !== clientId && message.split(':')[1] === 'position') {
-    const id = message.split(':')[0];
-    
-    let [x, y] = message.split(':')[2].split(',');
-    
-    x = parseFloat(x);
-    y = parseFloat(y);
-    
-    /*
-    // figure out which sprite to use based on the direction
+    const otherPlayers = {};
+    if(alreadyConnected) {
+        // Ask server for the location of all other players
+        socket.send('getPlayer:all');
+    } else {
+        alreadyConnected = true;
+    }
+
+
+    function handleMessage(message) {
+        if(!message) return false;
+
+        console.log(`Got message ${message}`);
+
+        // Handle the ID message
+        if(message.split(':')[0] === 'id') {
+            clientId = message.split(':')[1];
+            return true;
+        }
+
+        // Handle movement of other players
+        if(message.split(':')[0] !== clientId && message.split(':')[1] === 'position') {
+            const id = message.split(':')[0];
+
+            let [x, y] = message.split(':')[2].split(',');
+
+            x = parseFloat(x);
+            y = parseFloat(y);
+
+            /*
+                // figure out which sprite to use based on the direction
     if (x > otherPlayers[id].pos.x) {
       otherPlayers[id].flipX = true;
       setSprite(otherPlayers[id], 'player-side');
@@ -211,121 +211,121 @@ function handleMessage(message) {
       setSprite(otherPlayers[id], 'player-up');
     }
     */
-    
-    otherPlayers[id].moveTo(x, y);
-    
-    console.log('moving other player', clientId, id);
-    
-    return true;
-  }
-  
-  // Handle player movement, but while they're doing it (above is after they stopped moving)
-  if(message.split(':')[0] !== clientId && message.split(':')[1] === 'moving') {
-    const id = message.split(':')[0];
-    
-    
-    console.log('other player is moving', id, message.split(':')[2]);
-    
-    if (message.split(':')[2] === 'stopped') {
-      otherPlayers[id].stop();
-      otherPlayers[id].moving = false;
-      return true;
+
+            otherPlayers[id].moveTo(x, y);
+
+            console.log('moving other player', clientId, id);
+
+            return true;
+        }
+
+        // Handle player movement, but while they're doing it (above is after they stopped moving)
+        if(message.split(':')[0] !== clientId && message.split(':')[1] === 'moving') {
+            const id = message.split(':')[0];
+
+
+            console.log('other player is moving', id, message.split(':')[2]);
+
+            if (message.split(':')[2] === 'stopped') {
+                otherPlayers[id].stop();
+                otherPlayers[id].moving = false;
+                return true;
+            }
+
+            let [x, y] = message.split(':')[2].split(',');
+
+            x = parseFloat(x);
+            y = parseFloat(y);
+
+            // figure out which sprite to use based on the direction
+            if (x > 0) {
+                otherPlayers[id].flipX = true;
+                if(otherPlayers[id].curAnim() !== 'walk') {
+                    setSprite(otherPlayers[id], 'player-side');
+                    otherPlayers[id].play('walk');
+                }
+            } else if (x < 0) {
+                otherPlayers[id].flipX = false;
+                if(otherPlayers[id].curAnim() !== 'walk') {
+                    setSprite(otherPlayers[id], 'player-side');
+                    otherPlayers[id].play('walk');
+                }
+            } else if (y > 0) {
+                setSprite(otherPlayers[id], 'player-down');
+            } else if (y < 0) {
+                setSprite(otherPlayers[id], 'player-up');
+            }
+
+            otherPlayers[id].move(x, y);
+            otherPlayers[id].moving = true;
+
+
+            return true;
+        }
+
+        // Handle moving our client
+        if(clientId && message.split(':')[0] === clientId && message.split(':')[1] === 'position') {
+            const [x, y] = message.split(':')[2].split(',');
+            player.moveTo(parseFloat(x), parseFloat(y));
+            console.log('player move!');
+            return true;
+        }
+
+        // Handle connection of other players
+        if(message.split(':')[0] === 'connected') {
+            const id = message.split(':')[1];
+            if (id === clientId || otherPlayers[id]) return false;
+            otherPlayers[id] = add([
+                sprite('player-down'),
+                pos(500,700),
+                scale(4),
+                area(),
+                body(),
+                {
+                    currentSprite: 'player-down',
+                    speed: 300,
+                    isInDialogue: false
+                },
+            ]);
+
+            console.log(`${id} has connected!`);
+            return true;
+        }
+
+        // Handle disconnection of other players
+        if(message.split(':')[0] === 'disconnected') {
+            const id = message.split(':')[1];
+            destroy(otherPlayers[id]);
+            delete otherPlayers[id];
+            console.log(`${id} has disconnected!`);
+            return true;
+        }
+
+
+        console.log('not handled!')
+        return false;
     }
 
-    let [x, y] = message.split(':')[2].split(',');
-    
-    x = parseFloat(x);
-    y = parseFloat(y);
-    
-    // figure out which sprite to use based on the direction
-    if (x > 0) {
-      otherPlayers[id].flipX = true;
-      if(otherPlayers[id].curAnim() !== 'walk') {
-        setSprite(otherPlayers[id], 'player-side');
-        otherPlayers[id].play('walk');
-      }
-    } else if (x < 0) {
-      otherPlayers[id].flipX = false;
-      if(otherPlayers[id].curAnim() !== 'walk') {
-        setSprite(otherPlayers[id], 'player-side');
-        otherPlayers[id].play('walk');
-      }
-    } else if (y > 0) {
-      setSprite(otherPlayers[id], 'player-down');
-    } else if (y < 0) {
-      setSprite(otherPlayers[id], 'player-up');
-    }
-    
-    otherPlayers[id].move(x, y);
-    otherPlayers[id].moving = true;
-    
-    
-    return true;
-  }
-
-  // Handle moving our client
-  if(clientId && message.split(':')[0] === clientId && message.split(':')[1] === 'position') {
-    const [x, y] = message.split(':')[2].split(',');
-    player.moveTo(parseFloat(x), parseFloat(y));
-    console.log('player move!');
-    return true;
-  }
-  
-  // Handle connection of other players
-  if(message.split(':')[0] === 'connected') {
-    const id = message.split(':')[1];
-    if (id === clientId || otherPlayers[id]) return false;
-    otherPlayers[id] = add([
-      sprite('player-down'),
-      pos(500,700),
-      scale(4),
-      area(),
-      body(),
-      {
-        currentSprite: 'player-down',
-        speed: 300,
-        isInDialogue: false
-      },
-    ]);
-    
-    console.log(`${id} has connected!`);
-    return true;
-  }
-  
-  // Handle disconnection of other players
-  if(message.split(':')[0] === 'disconnected') {
-    const id = message.split(':')[1];
-    destroy(otherPlayers[id]);
-    delete otherPlayers[id];
-    console.log(`${id} has disconnected!`);
-    return true;
-  }
-
-  
-  console.log('not handled!')
-  return false;
-}
-
-window.setupHandler((event) => {
-  handleMessage(event.data);
-})
+    window.setupHandler((event) => {
+        handleMessage(event.data);
+    })
 
     let tick = 0
     onUpdate(() => {
         camPos(player.pos)
         tick++
         if ((isKeyDown('down') || isKeyDown('up')) 
-        && tick % 20 === 0 
-        && !player.isInDialogue) {
+            && tick % 20 === 0 
+            && !player.isInDialogue) {
             player.flipX = !player.flipX
         }
-      
-      // Animate the remote players
-      for(let id in otherPlayers) {
-        if(otherPlayers[id].moving && tick % 20 === 0) {
-          otherPlayers[id].flipX = !otherPlayers[id].flipX;
+
+        // Animate the remote players
+        for(let id in otherPlayers) {
+            if(otherPlayers[id].moving && tick % 20 === 0) {
+                otherPlayers[id].flipX = !otherPlayers[id].flipX;
+            }
         }
-      }
     })
 
     function setSprite(player, spriteName) {
@@ -346,7 +346,7 @@ window.setupHandler((event) => {
         if (player.isInDialogue) return
         setSprite(player, 'player-up')
         player.move(0, -player.speed)
-      updatePlayer(player.pos, `0,-${player.speed}`)
+        updatePlayer(player.pos, `0,-${player.speed}`)
     })
 
     onKeyDown('left', () => {
@@ -357,7 +357,7 @@ window.setupHandler((event) => {
             player.play('walk')
         }
         player.move(-player.speed, 0)
-      updatePlayer(player.pos, `-${player.speed},0`)
+        updatePlayer(player.pos, `-${player.speed},0`)
 
     })
 
@@ -369,26 +369,26 @@ window.setupHandler((event) => {
             player.play('walk')
         }
         player.move(player.speed, 0)
-      updatePlayer(player.pos, `${player.speed},0`)
+        updatePlayer(player.pos, `${player.speed},0`)
     })
 
 
     onKeyRelease('left', () => {
         player.stop()
-      updatePlayer(player.pos)
+        updatePlayer(player.pos)
     })
 
     onKeyRelease('right', () => {
         player.stop()
-      updatePlayer(player.pos)
+        updatePlayer(player.pos)
     })
 
     onKeyRelease('up', () => {
-      updatePlayer(player.pos)
+        updatePlayer(player.pos)
     })
 
     onKeyRelease('down', () => {
-      updatePlayer(player.pos)
+        updatePlayer(player.pos)
     })
 
 
@@ -416,11 +416,11 @@ window.setupHandler((event) => {
         const dialogue = "Defeat all monsters on this island and you'll become the champion!"
         const content = dialogueBox.add([
             text('', 
-            {
-                size: 42,
-                width: 900,
-                lineSpacing: 15,
-            }),
+                {
+                    size: 42,
+                    width: 900,
+                    lineSpacing: 15,
+                }),
             color(10,10,10),
             pos(40,30),
             fixed()
@@ -462,3 +462,5 @@ window.setupHandler((event) => {
     onCollideWithPlayer('centipede', player, worldState)
     onCollideWithPlayer('grass', player, worldState)
 }
+
+// vim: set tabstop=4 shiftwidth=4 expandtab:
